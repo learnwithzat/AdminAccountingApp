@@ -2,37 +2,68 @@
 
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, Building2, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+	Menu,
+	X,
+	LayoutDashboard,
+	Building2,
+	LogOut,
+	User,
+} from 'lucide-react';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
+	const router = useRouter();
 	const pathname = usePathname();
+
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [profileOpen, setProfileOpen] = useState(false);
+
+	// 🔐 Auth Guard
+	useEffect(() => {
+		const token = localStorage.getItem('token');
+
+		if (!token) {
+			router.replace('/login');
+		} else {
+			setLoading(false);
+		}
+	}, []);
+
+	// 🚪 Logout
+	const logout = () => {
+		localStorage.removeItem('token');
+		router.replace('/login');
+	};
 
 	const navItems = [
-		{ name: 'Dashboard', href: '/', icon: LayoutDashboard },
+		{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
 		{ name: 'Companies', href: '/companies', icon: Building2 },
 	];
 
+	if (loading) {
+		return (
+			<div className='h-screen flex items-center justify-center'>
+				<div className='h-10 w-32 bg-gray-200 animate-pulse rounded' />
+			</div>
+		);
+	}
+
 	return (
-		<div className='flex h-screen overflow-hidden bg-gray-50 text-gray-900'>
-			{/* MOBILE SIDEBAR */}
+		<div className='flex h-screen bg-gray-50'>
+			{/* MOBILE */}
 			{sidebarOpen && (
 				<div className='fixed inset-0 z-50 flex'>
 					<div
-						className='fixed inset-0 bg-black/40'
+						className='absolute inset-0 bg-black/40'
 						onClick={() => setSidebarOpen(false)}
 					/>
-
-					<aside className='relative w-64 bg-white h-full shadow-lg p-4 z-50'>
-						<div className='flex items-center justify-between mb-6'>
-							<h1 className='font-bold text-lg'>Zatgo</h1>
-							<X onClick={() => setSidebarOpen(false)} />
-						</div>
-
-						<nav className='space-y-2'>
+					<aside className='relative w-64 bg-white p-4 z-50'>
+						<X onClick={() => setSidebarOpen(false)} />
+						<nav className='mt-4 space-y-2'>
 							{navItems.map((item) => {
 								const Icon = item.icon;
 								const active = pathname === item.href;
@@ -41,9 +72,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 									<Link
 										key={item.href}
 										href={item.href}
-										onClick={() => setSidebarOpen(false)}
-										className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-											active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
+										className={`flex gap-2 p-2 rounded ${
+											active ? 'bg-blue-600 text-white' : ''
 										}`}>
 										<Icon size={18} />
 										{item.name}
@@ -57,11 +87,9 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 
 			{/* DESKTOP SIDEBAR */}
 			<aside className='hidden md:flex w-64 bg-white border-r flex-col'>
-				<div className='h-16 flex items-center px-6 border-b font-bold'>
-					Zatgo
-				</div>
+				<div className='p-4 font-bold'>Zatgo</div>
 
-				<nav className='flex-1 p-4 space-y-2 text-sm'>
+				<nav className='flex-1 p-4 space-y-2'>
 					{navItems.map((item) => {
 						const Icon = item.icon;
 						const active = pathname === item.href;
@@ -70,7 +98,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 							<Link
 								key={item.href}
 								href={item.href}
-								className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+								className={`flex gap-2 p-2 rounded ${
 									active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
 								}`}>
 								<Icon size={18} />
@@ -79,31 +107,37 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 						);
 					})}
 				</nav>
-
-				<div className='p-4 border-t text-xs text-gray-500'>
-					© {new Date().getFullYear()} Zatgo
-				</div>
 			</aside>
 
 			{/* MAIN */}
 			<div className='flex-1 flex flex-col'>
-				{/* Topbar */}
-				<header className='h-16 bg-white border-b flex items-center justify-between px-4 md:px-6'>
-					<div className='flex items-center gap-3'>
+				<header className='h-14 bg-white border-b flex justify-between items-center px-4'>
+					<Menu
+						className='md:hidden'
+						onClick={() => setSidebarOpen(true)}
+					/>
+
+					<div className='relative'>
 						<button
-							className='md:hidden'
-							onClick={() => setSidebarOpen(true)}>
-							<Menu size={22} />
+							onClick={() => setProfileOpen(!profileOpen)}
+							className='w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center'>
+							<User size={16} />
 						</button>
 
-						<h1 className='text-sm text-gray-600'>Admin Dashboard</h1>
+						{profileOpen && (
+							<div className='absolute right-0 mt-2 bg-white border rounded shadow'>
+								<button
+									onClick={logout}
+									className='flex items-center gap-2 px-4 py-2 hover:bg-gray-100'>
+									<LogOut size={16} />
+									Logout
+								</button>
+							</div>
+						)}
 					</div>
-
-					<div className='w-8 h-8 rounded-full bg-gray-200' />
 				</header>
 
-				{/* CONTENT */}
-				<main className='flex-1 overflow-y-auto p-6'>{children}</main>
+				<main className='p-6 overflow-y-auto flex-1'>{children}</main>
 			</div>
 		</div>
 	);
